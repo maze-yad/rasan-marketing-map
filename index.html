@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Rasan Marketing Map</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Schibsted+Grotesk:wght@400..700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a planning tool. Sticky header with two views. Map = the sheet's tree (spine → layer → branch → topics) with the sheet's layer colours; Budget = ledger tables that roll up topic → branch → layer → year. */
+:root{
+  --bg:#f4f5f1; --surface:#ffffff; --sunk:#eaece6; --fg:#17201b; --muted:#59645c; --faint:#89928b; --line:#d8dcd3;
+  --ink:#1e4a3b; --ink-fg:#ffffff; --good:#2c7a4b; --warn:#a8610b; --bad:#b3261e;
+  --rust:#c2410c; --blue:#1d4ed8; --teal:#0e7490; --purple:#7c3aed; --amber:#a85407; --magenta:#be185d; --green:#15803d; --slate:#475569; --olive:#5f6d0c;
+  --f-display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --f-body:"Schibsted Grotesk", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
+  --f-mono:"IBM Plex Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --r:5px; --hh:64px;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#101412; --surface:#181d1a; --sunk:#0c0f0d; --fg:#e6eae5; --muted:#a2aca4; --faint:#717b73; --line:#2a312c;
+  --ink:#2b6a53; --ink-fg:#ffffff; --good:#5cc489; --warn:#e3a14a; --bad:#f07a70;
+  --rust:#d9520f; --blue:#3d6ff0; --teal:#0f8cab; --purple:#8b5cf6; --amber:#c46a0a; --magenta:#d32b74; --green:#1e9a4c; --slate:#64748b; --olive:#7b8c12;
+  color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#101412; --surface:#181d1a; --sunk:#0c0f0d; --fg:#e6eae5; --muted:#a2aca4; --faint:#717b73; --line:#2a312c;
+  --ink:#2b6a53; --ink-fg:#ffffff; --good:#5cc489; --warn:#e3a14a; --bad:#f07a70;
+  --rust:#d9520f; --blue:#3d6ff0; --teal:#0f8cab; --purple:#8b5cf6; --amber:#c46a0a; --magenta:#d32b74; --green:#1e9a4c; --slate:#64748b; --olive:#7b8c12;
+  color-scheme:dark }
+
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:14px;line-height:1.45;-webkit-font-smoothing:antialiased}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:10;background:var(--surface)}
+button,input,select{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+.wrap{max-width:1320px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+
+.c-rust{--c:var(--rust)} .c-blue{--c:var(--blue)} .c-teal{--c:var(--teal)} .c-purple{--c:var(--purple)} .c-amber{--c:var(--amber)}
+.c-magenta{--c:var(--magenta)} .c-green{--c:var(--green)} .c-slate{--c:var(--slate)} .c-olive{--c:var(--olive)}
+
+/* header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:5;background:var(--surface);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px 20px;flex-wrap:wrap;padding-block:12px}
+.brand{display:flex;align-items:center;gap:12px;min-width:0;flex:1 1 280px}
+.mark{background:var(--ink);color:var(--ink-fg);font-family:var(--f-display);font-weight:800;letter-spacing:.08em;font-size:13px;padding:7px 10px;border-radius:3px}
+.brand h1{font-family:var(--f-display);font-weight:700;font-size:20px;line-height:1.1;margin:0;letter-spacing:-.01em}
+.brand p{margin:2px 0 0;color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.tabs{display:flex;background:var(--sunk);border-radius:7px;padding:3px;gap:2px}
+.tabs button{border:0;background:transparent;padding:7px 16px;border-radius:5px;font-weight:600;color:var(--muted)}
+.tabs button[aria-selected="true"]{background:var(--surface);color:var(--fg);box-shadow:0 1px 2px rgb(0 0 0 / .12)}
+.sync{font-size:12px;color:var(--faint);display:flex;align-items:center;gap:6px;min-width:84px;justify-content:flex-end}
+.sync i{width:7px;height:7px;border-radius:50%;background:var(--good)}
+.sync.busy i{background:var(--warn)} .sync.off i{background:var(--faint)} .sync.err i{background:var(--bad)}
+
+main{padding-block:20px 80px}
+.dataline{display:flex;align-items:center;justify-content:space-between;gap:10px 16px;flex-wrap:wrap}
+.dbtns{display:flex;gap:8px;flex-wrap:wrap}
+.notice{background:var(--sunk);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;color:var(--muted);margin-bottom:16px;font-size:13px}
+
+/* toolbar */
+.bar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px;margin-bottom:18px}
+.search{flex:1 1 220px;max-width:340px;position:relative}
+.search input{width:100%;border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:8px 12px 8px 32px}
+.search svg{position:absolute;left:10px;top:50%;transform:translateY(-50%);width:15px;height:15px;stroke:var(--faint)}
+.chk{display:flex;align-items:center;gap:7px;color:var(--muted);font-size:13px;cursor:pointer;user-select:none}
+.legend{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-left:auto;font-size:12px;--c:var(--slate)}
+.legend .node{pointer-events:none;padding:3px 8px;font-size:12px;width:auto;display:inline-flex;min-height:0}
+.ghost{border:1px solid var(--line);background:var(--surface);border-radius:6px;padding:7px 12px;font-weight:600;font-size:13px;color:var(--fg)}
+.ghost:hover{border-color:var(--faint)}
+
+/* tree */
+.tree{display:grid;grid-template-columns:auto 1fr;align-items:start}
+.root{position:sticky;align-self:start;top:calc(var(--hh) + 12px + env(safe-area-inset-top,0px));background:var(--ink);color:var(--ink-fg);font-family:var(--f-display);font-weight:800;letter-spacing:.1em;font-size:14px;padding:9px 12px;border-radius:3px;margin-top:6px}
+.layers{list-style:none;margin:0 0 0 14px;padding:0 0 0 0;border-left:3px solid var(--ink)}
+.layers>li{position:relative;padding:6px 0 26px 22px}
+.layers>li::before{content:"";position:absolute;left:0;top:22px;width:16px;border-top:2px solid var(--ink)}
+.layer{display:grid;grid-template-columns:minmax(200px,250px) 1fr;gap:0 10px;align-items:start}
+.lhead{display:flex;flex-direction:column;gap:6px;position:sticky;align-self:start;top:calc(var(--hh) + 12px + env(safe-area-inset-top,0px))}
+.lnode{display:flex;align-items:baseline;gap:8px;width:100%;text-align:left;border:0;background:var(--c);color:#fff;padding:9px 12px;border-radius:var(--r);font-weight:700;font-size:14px;line-height:1.25}
+.lnode .num{font-family:var(--f-mono);font-weight:500;font-size:12px;opacity:.85}
+.lnode:hover{filter:brightness(1.08)}
+.lmeta{display:flex;align-items:center;gap:6px;color:var(--muted);font-size:12px;font-variant-numeric:tabular-nums;padding-left:2px}
+.fold{border:0;background:transparent;color:var(--faint);padding:2px 4px;border-radius:4px;display:inline-flex}
+.fold svg{width:14px;height:14px;transition:transform .15s}
+.fold[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.fold:hover{color:var(--fg)}
+
+.kids{list-style:none;margin:0;padding:0;border-left:3px solid var(--c)}
+.kids>li{position:relative;padding:3px 0 3px 18px}
+.kids>li::before{content:"";position:absolute;left:0;top:17px;width:13px;border-top:1.5px solid color-mix(in srgb,var(--c) 60%,transparent)}
+.kids>li.add::before{border-top-style:dashed}
+.kids .kids{margin:4px 0 4px 12px}
+.branch{display:grid;grid-template-columns:minmax(170px,220px) 1fr;gap:0 10px;align-items:start;padding-bottom:10px!important}
+.branches>li.add{padding-top:2px}
+
+.node{display:flex;align-items:center;gap:8px;width:100%;max-width:460px;text-align:left;border:1px solid transparent;border-radius:4px;padding:5px 10px;
+  background:color-mix(in srgb,var(--c) 8%,var(--surface));color:var(--muted);font-weight:500;font-size:13px;line-height:1.3;min-height:30px}
+.node.board{background:color-mix(in srgb,var(--c) 22%,var(--surface));color:var(--fg);font-weight:650}
+.node.bnode{max-width:none;min-height:32px}
+.node:hover{border-color:color-mix(in srgb,var(--c) 70%,transparent)}
+.node .nm{flex:1;min-width:0;overflow-wrap:anywhere}
+.node.drop{opacity:.5}
+.node.drop .nm{text-decoration:line-through}
+.node .amt{font-family:var(--f-mono);font-size:11px;font-weight:500;color:var(--muted);white-space:nowrap}
+.node .sub{font-family:var(--f-mono);font-size:11px;color:var(--faint)}
+.node.hit{outline:2px solid var(--warn);outline-offset:1px}
+.nrow{display:flex;align-items:center;gap:5px;max-width:496px}
+.bwrap .nrow{max-width:none}
+.nrow .node{flex:1;min-width:0}
+.plus{flex:none;width:26px;height:26px;border-radius:50%;border:1px solid color-mix(in srgb,var(--c) 45%,var(--line));background:var(--surface);color:var(--c);
+  font-size:17px;font-weight:600;line-height:1;display:grid;place-items:center;padding:0 0 1px;opacity:.28;transition:opacity .12s,background .12s}
+.nrow:hover .plus,.nrow:focus-within .plus,.plus:focus-visible{opacity:1}
+.plus:hover{background:var(--c);color:#fff}
+@media (hover:none){.plus{opacity:.75}}
+.dim{opacity:.28}
+.readonly .node,.readonly .lnode{cursor:default}
+.addbtn{border:1px dashed var(--line);background:transparent;color:var(--faint);border-radius:4px;padding:4px 10px;font-size:12.5px;font-weight:600}
+.addbtn:hover{color:var(--fg);border-color:color-mix(in srgb,var(--c) 70%,transparent)}
+.rn{width:100%;max-width:460px;border:1.5px solid var(--c);border-radius:4px;padding:5px 9px;background:var(--surface);font-size:13px;font-weight:600}
+.lhead .rn{max-width:none;font-size:14px}
+.addlayer{margin:4px 0 0 36px}
+
+.empty{border:1px dashed var(--line);border-radius:8px;padding:36px 24px;text-align:center;color:var(--muted);background:var(--surface)}
+.empty h2{font-family:var(--f-display);font-size:19px;color:var(--fg);margin:0 0 6px}
+.empty p{margin:0 auto 16px;max-width:46ch}
+.primary{border:0;background:var(--ink);color:var(--ink-fg);border-radius:6px;padding:9px 16px;font-weight:650}
+
+/* menu */
+.menu{position:fixed;z-index:20;min-width:220px;max-width:290px;background:var(--surface);border:1px solid var(--line);border-radius:8px;box-shadow:0 10px 30px rgb(0 0 0 / .18);padding:6px}
+.menu .mt{font-size:11.5px;color:var(--faint);padding:6px 10px 4px;text-transform:uppercase;letter-spacing:.06em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.menu button.mi{display:flex;width:100%;align-items:center;gap:10px;border:0;background:transparent;text-align:left;padding:7px 10px;border-radius:5px;font-size:13.5px}
+.menu button.mi:hover,.menu button.mi:focus-visible{background:var(--sunk)}
+.menu button.mi.danger{color:var(--bad)}
+.menu hr{border:0;border-top:1px solid var(--line);margin:5px 4px}
+.menu .confirm{padding:8px 10px;font-size:13px;color:var(--fg)}
+.menu .confirm p{margin:0 0 10px}
+.menu .row{display:flex;gap:8px}
+.menu .del{border:0;background:var(--bad);color:#fff;border-radius:5px;padding:6px 12px;font-weight:650}
+.sw{display:flex;gap:6px;flex-wrap:wrap;padding:6px 10px}
+.sw button{width:22px;height:22px;border-radius:50%;border:2px solid transparent;background:var(--c)}
+.sw button[aria-pressed="true"]{border-color:var(--fg)}
+
+/* budget */
+.bsum{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:8px;overflow:hidden;margin-bottom:14px}
+.stat{background:var(--surface);padding:14px 16px;min-width:0}
+.stat .k{font-size:11.5px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted);font-weight:600}
+.stat .v{font-family:var(--f-display);font-weight:700;font-size:26px;line-height:1.15;margin-top:4px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat .s{font-size:12px;color:var(--faint);margin-top:2px;font-variant-numeric:tabular-nums}
+.stat.over .v{color:var(--bad)}
+.annual{display:flex;gap:6px;margin-top:6px}
+.annual input{flex:1;min-width:0;font-family:var(--f-display);font-weight:700;font-size:22px;border:1px solid var(--line);background:var(--bg);border-radius:5px;padding:3px 8px;font-variant-numeric:tabular-nums}
+.annual select{border:1px solid var(--line);background:var(--bg);border-radius:5px;padding:0 6px;font-weight:600;font-size:13px}
+
+.alloc{background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:14px 16px;margin-bottom:22px}
+.alloc h3{margin:0 0 10px;font-size:13px;font-weight:650;display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.alloc h3 span{color:var(--faint);font-weight:500;font-variant-numeric:tabular-nums}
+.stack{display:flex;height:16px;border-radius:4px;overflow:hidden;background:var(--sunk)}
+.stack i{display:block;height:100%;background:var(--c);min-width:0}
+.stack i+i{box-shadow:inset 1px 0 0 var(--surface)}
+.stack .free{background:repeating-linear-gradient(135deg,transparent 0 5px,color-mix(in srgb,var(--faint) 30%,transparent) 5px 6px)}
+.keys{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px 18px;margin-top:12px;font-size:12.5px}
+.keys div{display:flex;align-items:center;gap:8px;min-width:0}
+.keys b{width:10px;height:10px;border-radius:2px;background:var(--c);flex:none}
+.keys span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--muted)}
+.keys em{font-style:normal;font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+
+.btools{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+.btools p{margin:0;color:var(--muted);font-size:13px;max-width:70ch}
+.bl{background:var(--surface);border:1px solid var(--line);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.bl>header{display:flex;align-items:center;gap:10px 14px;flex-wrap:wrap;padding:10px 14px;border-bottom:1px solid var(--line);border-top:4px solid var(--c)}
+.bl>header h3{margin:0;font-size:15px;font-weight:700;flex:1 1 220px;min-width:0}
+.bl>header h3 .num{font-family:var(--f-mono);font-weight:500;color:var(--c);margin-right:6px;font-size:13px}
+.bl>header .tot{font-family:var(--f-mono);font-size:12.5px;color:var(--muted);font-variant-numeric:tabular-nums;display:flex;gap:14px;flex-wrap:wrap}
+.bl>header .tot b{color:var(--fg);font-weight:500}
+.meter{width:90px;height:6px;border-radius:3px;background:var(--sunk);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--c)}
+.meter.over i{background:var(--bad)}
+.tw{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:600px}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--faint);font-weight:600;text-align:right;padding:8px 12px;border-bottom:1px solid var(--line)}
+th:first-child{text-align:left}
+td{padding:4px 12px;border-bottom:1px solid color-mix(in srgb,var(--line) 60%,transparent);vertical-align:top}
+tr:last-child td{border-bottom:0}
+td.it{font-size:13px;padding-top:9px}
+td.it .o{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px;vertical-align:1px;background:color-mix(in srgb,var(--c) 30%,var(--surface));border:1px solid var(--c)}
+td.it .o.board{background:var(--c)}
+tr.l0 td.it{font-weight:700}
+tr.l0 td{background:color-mix(in srgb,var(--c) 5%,var(--surface))}
+tr.drop td.it span.t{text-decoration:line-through;color:var(--faint)}
+td.n{text-align:right;width:150px}
+td.n input{width:100%;text-align:right;border:1px solid transparent;background:transparent;border-radius:4px;padding:5px 7px;font-family:var(--f-mono);font-size:13px;font-variant-numeric:tabular-nums}
+td.n input:hover{border-color:var(--line)}
+td.n input:focus{border-color:var(--c);background:var(--bg);outline:none}
+td.n input:disabled{color:var(--faint);opacity:.6}
+td.n .rt{font-family:var(--f-mono);font-size:11px;color:var(--faint);padding:0 8px 4px;font-variant-numeric:tabular-nums}
+td.left{font-family:var(--f-mono);font-size:13px;padding-top:9px;font-variant-numeric:tabular-nums;color:var(--muted);text-align:right;width:130px}
+td.left.neg{color:var(--bad)}
+tr.addrow td{padding:4px 12px 8px}
+tr.foot td{border-top:1px solid var(--line);font-weight:650;background:var(--sunk);padding-block:9px;font-family:var(--f-mono);font-size:13px;text-align:right;font-variant-numeric:tabular-nums}
+tr.foot td:first-child{text-align:left;font-family:var(--f-body)}
+
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--fg);color:var(--bg);padding:9px 16px;border-radius:7px;font-size:13px;z-index:30;max-width:calc(100% - 32px)}
+
+@media (max-width:820px){
+  .layer,.branch{grid-template-columns:1fr}
+  .lhead{position:static;margin-bottom:8px}
+  .branch .bwrap{margin-bottom:4px}
+  .branch>.kids{margin-left:8px}
+  .root{position:static}
+}
+@media (max-width:560px){
+  .tree{grid-template-columns:1fr}
+  .root{justify-self:start;margin:0 0 0 0}
+  .layers{margin-left:10px}
+  .layers>li{padding-left:14px}
+  .layers>li::before{width:10px}
+  .legend{margin-left:0}
+}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+
+
+<header class="top">
+  <div class="wrap">
+    <div class="brand">
+      <span class="mark">RASAN</span>
+      <div><h1>Marketing Map</h1><p id="counts">Loading the plan…</p></div>
+    </div>
+    <div class="tabs" role="tablist" aria-label="View">
+      <button role="tab" id="tab-map" aria-selected="true" data-act="view" data-v="map">Mind map</button>
+      <button role="tab" id="tab-budget" aria-selected="false" data-act="view" data-v="budget">Budget</button>
+    </div>
+    <div class="sync off" id="sync"><i></i><span>Connecting</span></div>
+  </div>
+</header>
+
+<main class="wrap" id="app">
+  <div id="notice"></div>
+  <section id="view-map">
+    <div class="bar">
+      <label class="search" for="q">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+        <input id="q" type="search" placeholder="Find a topic" autocomplete="off">
+      </label>
+      <label class="chk" for="hide"><input type="checkbox" id="hide"> Hide dropped</label>
+      <button class="ghost" data-act="foldall" id="foldall">Collapse all</button>
+      <div class="legend" aria-label="Key">
+        <span class="node board"><span class="nm">From whiteboard</span></span>
+        <span class="node"><span class="nm">Suggested</span></span>
+        <span class="node drop"><span class="nm">Dropped</span></span>
+      </div>
+    </div>
+    <div id="map"><div class="empty"><h2>Loading the map</h2><p>Fetching the layers, branches and topics.</p></div></div>
+  </section>
+  <section id="view-budget" hidden>
+    <div id="budget"></div>
+  </section>
+</main>
+<div class="menu" id="menu" hidden></div>
+<div class="toast" id="toast" hidden></div>
+<input type="file" id="importfile" accept=".json,application/json" hidden>
+<script type="application/json" id="seed">{"layers": [{"id": "Lujzde8gx", "order": 1, "name": "Strategy & Campaigns", "color": "rust", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "30im6q2h", "name": "New branch", "origin": "board", "plan": 0}], "drop": false, "id": "pf91dhod", "name": "Rasan Kitchen (master campaign)", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "zdoc9is0", "name": "Key visual & slogan", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "j8ht9lgm", "name": "Recipe series “Cook with Rasan”", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "1u33xtpl", "name": "Ramadan & Eid (buy and win sticker in Doo bottles)", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "pft75v2s", "name": "Picnic season / participate in Bahar events, sponsor hiking groups", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "eh60kvj5", "name": "Summer morning or evening event sponsored by Rasan, focusing on Doo", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "0ce9uvw5", "name": "Back to school", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "3efr4edt", "name": "Winter comfort food", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "39lwahjl", "name": "New sub-topic", "origin": "board", "plan": 0}], "drop": false, "id": "xg9edn58", "name": "Seasonal campaigns", "origin": "suggested", "plan": 0}], "drop": false, "id": "d6ncf10e", "name": "Campaign", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "3d4boqnk", "name": "New sub-topic", "origin": "board", "plan": 0}], "drop": false, "id": "h5dnsipz", "name": "Teaser phase on social", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "z5fk2z9r", "name": "Launch event & press kit", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "i19r0wyo", "name": "Trial sampling in stores", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "jfljooa5", "name": "Retailer launch kit & listing", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "lqsaj08x", "name": "Intro price / bundle offer", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ui6d39zz", "name": "Post-launch sales review", "origin": "suggested", "plan": 0}], "drop": false, "id": "2sywb3wk", "name": "New Product Launch", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "n2khvdga", "name": "Consumer & taste tests", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "j8gxbeny", "name": "Competitor tracking", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "jqwx4hh5", "name": "Brand awareness survey", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "344tfjgv", "name": "Sales & shelf-share tracking", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "q4k7bn7x", "name": "Campaign ROI reports", "origin": "suggested", "plan": 0}], "drop": false, "id": "zzg4zdme", "name": "Research & KPIs", "origin": "suggested", "plan": 0}]}, {"id": "Lj8b7tfq7", "order": 2, "name": "ATL · Above the Line", "color": "blue", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "ompzom75", "name": "Brochure", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "wbbr4qmw", "name": "Catalogue", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "2wxfogo4", "name": "Roll-up", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "mvn4a4wf", "name": "Mascot statue", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "hym4l1vf", "name": "Flyers & posters", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "z3zfkkib", "name": "Recipe booklets", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "j3j4wj99", "name": "Packaging inserts & stickers", "origin": "suggested", "plan": 0}], "drop": false, "id": "xkwo886v", "name": "Print & Collateral", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "nbqns6pu", "name": "TV commercials (local Kurdish & Iraqi channels)", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "q80idw37", "name": "Ramadan program sponsorship", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "06i8j76b", "name": "Cooking show product placement", "origin": "suggested", "plan": 0}], "drop": false, "id": "ibag7i1m", "name": "TV", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "9du7794g", "name": "Radio spots & live reads", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "9dpmrcg6", "name": "Morning-show sponsorship", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "29be2u66", "name": "Magazine & newspaper ads", "origin": "suggested", "plan": 0}], "drop": false, "id": "2lajlj4h", "name": "Radio & Print Media", "origin": "suggested", "plan": 0}]}, {"id": "Lmr26846p", "order": 3, "name": "OOH · Out of Home", "color": "teal", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "z2uep1en", "name": "Static billboards", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "thjxjqi3", "name": "Guerrilla", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ogz5kok1", "name": "Highway unipoles (city-to-city roads)", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "6zv0mwuf", "name": "Building wraps", "origin": "suggested", "plan": 0}], "drop": false, "id": "7q9m2i0h", "name": "Billboards", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "v7s6ehog", "name": "Digital screens", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "fqrclri1", "name": "Mall LED screens", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qzj865uf", "name": "Supermarket entrance screens", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "rdl1erbf", "name": "Airport screens", "origin": "suggested", "plan": 0}], "drop": false, "id": "xbv932by", "name": "DOOH", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "v90ric7p", "name": "Truck stickers", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "hkqdlmtt", "name": "Delivery van branding", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "7ns26lrw", "name": "Taxi & bus branding", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "bqcab69m", "name": "Bus shelters", "origin": "suggested", "plan": 0}], "drop": false, "id": "qfoeqh3a", "name": "Transit", "origin": "board", "plan": 0}]}, {"id": "L64p2g158", "order": 4, "name": "BTL · Activations, Events & Sponsorship", "color": "purple", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "zwdiaeq1", "name": "Food truck design for promo", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "kdfy6sps", "name": "Collaborate with restaurant + chef", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "c3lkr2aq", "name": "Live cooking demos", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "xv9upctn", "name": "University & school activations", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "wlavyf4r", "name": "Mascot appearances", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "6mp6afqf", "name": "Pop-up kitchen in malls", "origin": "suggested", "plan": 0}], "drop": false, "id": "z6tnovmi", "name": "Activation", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "f7jyu5js", "name": "Rasan brand event", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "jc616i76", "name": "Christmas", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "y29db8p5", "name": "Akre", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qa3e68f7", "name": "Duhok", "origin": "board", "plan": 0}], "drop": false, "id": "bofbcixg", "name": "Newroz", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "35ye4scm", "name": "Erbil Expo", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ejvqtia4", "name": "Baghdad Expo", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "d5rgn5s7", "name": "Food & HoReCa trade fairs", "origin": "suggested", "plan": 0}], "drop": false, "id": "e4qeqpno", "name": "Expos", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "s333h9mt", "name": "Ramadan iftar tents", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "f4bs3e62", "name": "Eid gatherings", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "rynnefj7", "name": "Food & summer festivals", "origin": "suggested", "plan": 0}], "drop": false, "id": "jzczbtto", "name": "Events", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "55zbka52", "name": "Activities", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ztj0wyuh", "name": "Cooking competitions", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "vauvzhma", "name": "Local sports teams & marathons", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "sqxezyex", "name": "University & school events", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "1rdrgdsj", "name": "Concerts & festivals", "origin": "suggested", "plan": 0}], "drop": false, "id": "qxi6rhxo", "name": "Sponsorship", "origin": "board", "plan": 0}]}, {"id": "Lpr16umx1", "order": 5, "name": "Trade Marketing", "color": "amber", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "2is5d9ik", "name": "Shelf", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "40vstqqz", "name": "Shop in-store design", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "pt49zhkk", "name": "Branded fridge", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "en659o2v", "name": "Planogram & eye-level space", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "21i9mpfl", "name": "Shelf strips, wobblers & standees", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "v9fupxqm", "name": "Gondola ends & floor displays", "origin": "suggested", "plan": 0}], "drop": false, "id": "bz99nfd0", "name": "In-store Visibility", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "vd5rxi67", "name": "Sampling", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "nfrpyz21", "name": "Sampling booth", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "tbic145a", "name": "Sampling mall space", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ez732pgo", "name": "Weekend supermarket tastings", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "jj7g3f9c", "name": "Promoter staff & uniforms", "origin": "suggested", "plan": 0}], "drop": false, "id": "b0y07nyr", "name": "Sampling", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "qoaa8t3r", "name": "Bundles & buy 2 get 1", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "up47p9pb", "name": "Gift with purchase", "origin": "suggested", "plan": 0}], "drop": false, "id": "1hget7my", "name": "Consumer offers", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "0tdbm50f", "name": "Retailer incentives & contests", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "0xzmas6e", "name": "Supermarkets & hypermarkets", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "n5mtmo3o", "name": "Neighbourhood groceries", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qsg5lo50", "name": "HoReCa (hotels, restaurants, cafés)", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "djzdnbj0", "name": "Delivery & e-commerce apps", "origin": "suggested", "plan": 0}], "drop": false, "id": "qo1xo5cv", "name": "Channels", "origin": "suggested", "plan": 0}], "drop": false, "id": "aioctiq7", "name": "Promotions & Channels", "origin": "suggested", "plan": 0}]}, {"id": "Lddlz2uhf", "order": 6, "name": "Digital · Social & Influencers", "color": "magenta", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "rfw0h9ny", "name": "Instagram", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "wt1fd4mx", "name": "TikTok", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "82mux4b0", "name": "Facebook", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "pzcyc3ed", "name": "Snapchat", "origin": "suggested", "plan": 0}], "drop": false, "id": "yxv2kgaf", "name": "Platforms", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qmevxrvc", "name": "Recipe reels & how-to videos", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qurtaebo", "name": "Monthly content calendar", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "g43yq15i", "name": "Paid ads & targeting", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "5latjpuu", "name": "Giveaways & contests", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "3xf6mzkp", "name": "Community management & DMs", "origin": "suggested", "plan": 0}], "drop": false, "id": "kvml73ct", "name": "Social Media", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "1geqfng0", "name": "Chefs & food bloggers", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "52loi03p", "name": "Family & home-cooking creators", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "8hssrrxq", "name": "Micro influencers by city", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "qm2plppj", "name": "Recipe challenge campaigns", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "smuezqp6", "name": "Brand ambassador program", "origin": "suggested", "plan": 0}], "drop": false, "id": "0ec498uk", "name": "Influencers", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "o2xcsohd", "name": "Website with recipes", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "mmex6l2q", "name": "Google & YouTube ads", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "agwncxvj", "name": "Delivery-app banners", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "cnqcnau0", "name": "WhatsApp channel", "origin": "suggested", "plan": 0}], "drop": false, "id": "7og3cga4", "name": "Web & Apps", "origin": "suggested", "plan": 0}]}, {"id": "Lxltenc59", "order": 7, "name": "CSR · Community", "color": "green", "branches": [{"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "fkzr0st0", "name": "Pink October (breast-cancer awareness)", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "zzna1k1h", "name": "Food baskets for families", "origin": "suggested", "plan": 0}], "drop": false, "id": "dtw00bxm", "name": "Ramadan", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "9jzfx6kj", "name": "Food distribution", "origin": "suggested", "plan": 0}], "drop": false, "id": "fzx3kiad", "name": "Ashura", "origin": "board", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "wsk7kegy", "name": "World Food Day (16 Oct)", "origin": "suggested", "plan": 0}], "drop": false, "id": "4e0gz9j8", "name": "Occasions", "origin": "board", "plan": 0}, {"actual": 0, "children": [{"actual": 0, "children": [], "drop": false, "id": "yfkozm4l", "name": "Orphanage & school meals", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "ncz7kywh", "name": "Support local farmers", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "jpmc9cuh", "name": "Clean-up & tree planting", "origin": "suggested", "plan": 0}, {"actual": 0, "children": [], "drop": false, "id": "y39t0tp1", "name": "Employee volunteering", "origin": "suggested", "plan": 0}], "drop": false, "id": "5mtic4ud", "name": "Ongoing Programs", "origin": "suggested", "plan": 0}]}], "settings": {"annual": 0, "currency": "USD"}}</script>
+
+<script>
+(() => {
+const PALETTE = ["rust","blue","teal","purple","amber","magenta","green","slate","olive"];
+const LS_DATA = "rasan-map-local-v1", LS_UI = "rasan-map-ui-v1";
+let layers = [];
+let settings = { annual: 0, currency: "USD" };
+let mode = "loading";           // loading | shared | local
+let canWrite = true;
+let db = null, downloads = null;
+const ui = { view: "map", q: "", hideDrop: false, collapsed: new Set(), editing: null, menu: null };
+const pending = {};
+let remoteWaiting = false, rafId = 0;
+
+try { const s = JSON.parse(localStorage.getItem(LS_UI) || "{}"); ui.hideDrop = !!s.hideDrop; (s.collapsed || []).forEach(x => ui.collapsed.add(x)); } catch (e) {}
+function saveUI(){ try { localStorage.setItem(LS_UI, JSON.stringify({ hideDrop: ui.hideDrop, collapsed: [...ui.collapsed] })); } catch (e) {} }
+
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const clone = o => JSON.parse(JSON.stringify(o));
+const uid = () => Math.random().toString(36).slice(2, 10);
+const num = v => (typeof v === "number" && isFinite(v)) ? v : 0;
+
+/* ---------- money ---------- */
+function money(v){
+  const cur = settings.currency || "USD";
+  try { return new Intl.NumberFormat("en-US", { style: "currency", currency: cur, maximumFractionDigits: 0, minimumFractionDigits: 0 }).format(v); }
+  catch (e) { return cur + " " + Math.round(v).toLocaleString("en-US"); }
+}
+function plain(v){ return v ? v.toLocaleString("en-US", { maximumFractionDigits: 2 }) : ""; }
+function parseAmt(s){
+  s = String(s || "").trim().toLowerCase().replace(/[, ]/g, "").replace(/[^0-9.km-]/g, "");
+  if (!s) return 0;
+  let mult = 1;
+  if (s.endsWith("k")) { mult = 1e3; s = s.slice(0, -1); } else if (s.endsWith("m")) { mult = 1e6; s = s.slice(0, -1); }
+  const n = parseFloat(s);
+  return isFinite(n) ? Math.max(0, Math.round(n * mult * 100) / 100) : 0;
+}
+
+/* ---------- tree helpers ---------- */
+function find(L, id, arr = L.branches, parent = null){
+  for (let i = 0; i < arr.length; i++){
+    const n = arr[i];
+    if (n.id === id) return { node: n, arr, i, parent };
+    const r = find(L, id, n.children || [], n);
+    if (r) return r;
+  }
+  return null;
+}
+const layerById = id => layers.find(l => l.id === id);
+function countDesc(n){ return (n.children || []).reduce((a, c) => a + 1 + countDesc(c), 0); }
+function rollup(n){
+  if (n.drop) return { plan: 0, actual: 0 };
+  let p = num(n.plan), a = num(n.actual);
+  for (const c of n.children || []) { const r = rollup(c); p += r.plan; a += r.actual; }
+  return { plan: p, actual: a };
+}
+function layerTotals(L){ let p = 0, a = 0; for (const b of L.branches) { const r = rollup(b); p += r.plan; a += r.actual; } return { plan: p, actual: a }; }
+function matches(n, q){ return n.name.toLowerCase().includes(q) || (n.children || []).some(c => matches(c, q)); }
+function isBranchArr(L, arr){ return arr === L.branches; }
+function blank(name){ return { id: uid(), name, origin: "board", drop: false, plan: 0, actual: 0, children: [] }; }
+
+/* ---------- persistence ---------- */
+function setSync(){
+  const el = $("#sync"), busy = Object.values(pending).some(p => p.busy);
+  let cls = "", txt = "Saved";
+  if (mode === "loading") { cls = "off"; txt = "Connecting"; }
+  else if (mode === "local") { cls = ""; txt = "Saved in this browser"; }
+  else if (!canWrite) { cls = "off"; txt = "View only"; }
+  else if (busy) { cls = "busy"; txt = "Saving…"; }
+  el.className = "sync " + cls; el.querySelector("span").textContent = txt;
+}
+function toast(msg){
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.hidden = true, 3800);
+}
+function writeLocal(){ try { localStorage.setItem(LS_DATA, JSON.stringify({ layers, settings })); } catch (e) {} }
+function bodyOf(path){
+  if (path === "settings/plan") return { annual: num(settings.annual), currency: settings.currency || "USD" };
+  const L = layerById(path.split("/")[1]);
+  return L ? { order: L.order, name: L.name, color: L.color, branches: clone(L.branches) } : null;
+}
+function save(path){
+  if (mode === "local") { writeLocal(); return; }
+  if (mode !== "shared" || !canWrite) return;
+  const p = pending[path] || (pending[path] = { busy: false, dirty: false });
+  p.dirty = true;
+  if (!p.busy) flush(path);
+}
+async function flush(path){
+  const p = pending[path]; p.busy = true; setSync();
+  while (p.dirty){
+    p.dirty = false;
+    const body = bodyOf(path);
+    let tries = 0;
+    while (true){
+      try {
+        if (p.del) await db.doc(path).delete();
+        else if (body) await db.doc(path).set(body);
+        break;
+      } catch (e) {
+        if ((e && e.code) === "unavailable" && tries++ < 1) { await new Promise(r => setTimeout(r, 400 + Math.random() * 600)); continue; }
+        if (e && e.code === "quota_exceeded") toast("The map's storage is full. Delete some topics, then try again.");
+        else if (e && (e.code === "revoked" || e.code === "not_granted")) { canWrite = false; toast("Editing isn't available in this view."); }
+        else toast("Couldn't save that change. You may only have view access to this map.");
+        p.dirty = false; break;
+      }
+    }
+  }
+  p.busy = false; if (p.del) delete pending[path];
+  setSync();
+}
+const saveLayer = L => save("layers/" + L.id);
+const isBusy = path => !!(pending[path] && (pending[path].busy || pending[path].dirty));
+
+function applyLayers(snap){
+  const next = [];
+  const seen = new Set();
+  for (const d of snap.docs){
+    seen.add(d.id);
+    const path = "layers/" + d.id;
+    if (pending[path] && pending[path].del) continue;
+    if (isBusy(path)) { const local = layerById(d.id); if (local) next.push(local); continue; }
+    const data = clone(d.data() || {});
+    next.push({ id: d.id, order: num(data.order), name: data.name || "Untitled layer", color: PALETTE.includes(data.color) ? data.color : "slate", branches: Array.isArray(data.branches) ? data.branches : [] });
+  }
+  for (const L of layers) if (!seen.has(L.id) && isBusy("layers/" + L.id)) next.push(L);
+  next.sort((a, b) => a.order - b.order);
+  layers = next;
+  renderSoon(true);
+}
+
+function boot(){
+  mode = "local"; downloads = true;
+  let loaded = false;
+  try { const st = JSON.parse(localStorage.getItem(LS_DATA) || "null"); if (st && Array.isArray(st.layers)) { layers = st.layers; settings = st.settings || settings; loaded = true; } } catch (e) {}
+  if (!loaded) { try { const d = JSON.parse(document.getElementById("seed").textContent); layers = d.layers; settings = d.settings; } catch (e) {} }
+  $("#notice").innerHTML = `<div class="notice dataline"><span>Changes save automatically in this browser. Export a backup to keep a copy or move the plan to another computer.</span>
+    <span class="dbtns"><button class="ghost" data-act="backup">Export backup</button><button class="ghost" data-act="restore">Import backup</button></span></div>`;
+  render(); setSync();
+}
+function saveFile(name, text, type){
+  const blob = new Blob([text], { type }); const url = URL.createObjectURL(blob);
+  const a = document.createElement("a"); a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+function stamp(){ const d = new Date(); return d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0"); }
+function importBackup(file){
+  const r = new FileReader();
+  r.onload = () => {
+    try {
+      const d = JSON.parse(r.result);
+      if (!d || !Array.isArray(d.layers)) throw new Error("bad");
+      layers = d.layers.map((L, i) => ({ id: L.id || "L" + uid(), order: num(L.order) || i + 1, name: String(L.name || "Untitled layer"), color: PALETTE.includes(L.color) ? L.color : "slate", branches: Array.isArray(L.branches) ? L.branches : [] }));
+      settings = { annual: num(d.settings && d.settings.annual), currency: (d.settings && d.settings.currency) || "USD" };
+      writeLocal(); render(); toast("Backup imported.");
+    } catch (e) { toast("That file isn't a Rasan map backup. Choose a .json file made with Export backup."); }
+  };
+  r.readAsText(file);
+}
+
+/* ---------- rendering ---------- */
+function typing(){
+  const a = document.activeElement;
+  return (a && a.matches && a.matches("#app input:not([type=checkbox]), #app select") && a.id !== "q") || !$("#menu").hidden;
+}
+function renderSoon(remote){
+  if (remote && typing()) { remoteWaiting = true; return; }
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(render);
+}
+document.addEventListener("focusout", () => setTimeout(() => { if (remoteWaiting && !typing()) { remoteWaiting = false; renderSoon(); } }, 0));
+
+function render(){
+  const a = document.activeElement, fid = a && a.id, sel = a && typeof a.selectionStart === "number" ? [a.selectionStart, a.selectionEnd] : null;
+  const nb = layers.reduce((s, L) => s + L.branches.length, 0);
+  const nt = layers.reduce((s, L) => s + L.branches.reduce((x, b) => x + countDesc(b), 0), 0);
+  $("#counts").textContent = mode === "loading" ? "Loading the plan…" :
+    `${layers.length} layer${layers.length === 1 ? "" : "s"} · ${nb} branches · ${nt} topics`;
+  document.body.classList.toggle("readonly", !canWrite);
+  $("#hide").checked = ui.hideDrop;
+  $("#tab-map").setAttribute("aria-selected", ui.view === "map");
+  $("#tab-budget").setAttribute("aria-selected", ui.view === "budget");
+  $("#view-map").hidden = ui.view !== "map";
+  $("#view-budget").hidden = ui.view !== "budget";
+  $("#foldall").textContent = layers.length && layers.every(L => ui.collapsed.has(L.id)) ? "Expand all" : "Collapse all";
+  if (ui.view === "map") $("#map").innerHTML = renderMap(); else $("#budget").innerHTML = renderBudget();
+  const rn = document.getElementById("rn");
+  if (rn) { rn.focus(); if (ui.editing && ui.editing.fresh) rn.select(); }
+  else if (fid && document.getElementById(fid)) {
+    const el = document.getElementById(fid); el.focus();
+    if (sel && el.setSelectionRange) { try { el.setSelectionRange(sel[0], sel[1]); } catch (e) {} }
+  }
+}
+
+function renderMap(){
+  if (mode === "loading") return `<div class="empty"><h2>Loading the map</h2><p>Fetching the layers, branches and topics.</p></div>`;
+  if (!layers.length) return `<div class="empty"><h2>No layers yet</h2><p>Layers are the big sections of the plan, like ATL, OOH or Digital. Add the first one, then give it branches and topics.</p>${canWrite ? '<button class="primary" data-act="addlayer">Add a layer</button>' : ""}</div>`;
+  const q = ui.q.trim().toLowerCase();
+  let h = `<div class="tree"><div class="root">RASAN</div><ol class="layers">`;
+  layers.forEach((L, i) => {
+    const open = !ui.collapsed.has(L.id);
+    const t = layerTotals(L), nTop = L.branches.reduce((x, b) => x + countDesc(b), 0);
+    const editing = ui.editing && ui.editing.lid === L.id && ui.editing.id === "layer";
+    h += `<li class="layer c-${L.color}" data-lid="${L.id}"><div class="lhead">`;
+    h += editing ? `<input class="rn" id="rn" value="${esc(L.name)}" maxlength="120" aria-label="Layer name">`
+      : `<button class="lnode" data-act="layer" data-lid="${L.id}"><span class="num">${String(i + 1).padStart(2, "0")}</span><span>${esc(L.name)}</span></button>`;
+    h += `<div class="lmeta"><button class="fold" data-act="fold" data-lid="${L.id}" aria-expanded="${open}" aria-label="${open ? "Collapse" : "Expand"} ${esc(L.name)}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>${L.branches.length} branches · ${nTop} topics${t.plan ? " · " + money(t.plan) : ""}</div></div>`;
+    if (open){
+      h += `<ul class="kids branches">`;
+      for (const b of L.branches){
+        if (ui.hideDrop && b.drop) continue;
+        const dim = q && !matches(b, q) ? " dim" : "";
+        h += `<li class="branch${dim}"><div class="bwrap">${nodeBtn(L, b, q, true)}</div>`;
+        h += `<ul class="kids">${kidsHtml(L, b, q, true)}</ul></li>`;
+      }
+      if (canWrite) h += `<li class="add"><button class="addbtn" data-act="add" data-lid="${L.id}">+ Add branch</button></li>`;
+      h += `</ul>`;
+    }
+    h += `</li>`;
+  });
+  h += `</ol></div>`;
+  if (canWrite) h += `<div class="addlayer"><button class="ghost" data-act="addlayer">+ Add layer</button></div>`;
+  return h;
+}
+function kidsHtml(L, parent, q, isBranch){
+  let h = "";
+  for (const n of parent.children || []){
+    if (ui.hideDrop && n.drop) continue;
+    const dim = q && !matches(n, q) ? ' class="dim"' : "";
+    h += `<li${dim}>${nodeBtn(L, n, q, false)}`;
+    if ((n.children || []).length) h += `<ul class="kids">${kidsHtml(L, n, q, false)}</ul>`;
+    h += `</li>`;
+  }
+  if (canWrite) h += `<li class="add"><button class="addbtn" data-act="add" data-lid="${L.id}" data-pid="${parent.id}">+ Add ${isBranch ? "topic" : "branch here"}</button></li>`;
+  return h;
+}
+function nodeBtn(L, n, q, isBranch){
+  if (ui.editing && ui.editing.lid === L.id && ui.editing.id === n.id)
+    return `<input class="rn" id="rn" value="${esc(n.name)}" maxlength="160" aria-label="Name">`;
+  const r = rollup(n);
+  const hit = q && n.name.toLowerCase().includes(q) ? " hit" : "";
+  const cls = `node${isBranch ? " bnode" : ""}${n.origin === "board" ? " board" : ""}${n.drop ? " drop" : ""}${hit}`;
+  const btn = `<button class="${cls}" data-act="node" data-lid="${L.id}" data-id="${n.id}"><span class="nm">${esc(n.name)}</span>${r.plan ? `<span class="amt">${money(r.plan)}</span>` : ""}</button>`;
+  const plus = canWrite ? `<button class="plus" data-act="add" data-lid="${L.id}" data-pid="${n.id}" title="Add a branch under ${esc(n.name)}" aria-label="Add a branch under ${esc(n.name)}">+</button>` : "";
+  return `<div class="nrow">${btn}${plus}</div>`;
+}
+
+function renderBudget(){
+  if (mode === "loading") return `<div class="empty"><h2>Loading the budget</h2><p>Fetching the plan.</p></div>`;
+  const tots = layers.map(layerTotals);
+  const planned = tots.reduce((s, t) => s + t.plan, 0), spent = tots.reduce((s, t) => s + t.actual, 0);
+  const annual = num(settings.annual);
+  const free = annual - planned;
+  const curOpts = ["USD", "IQD", "EUR"].map(c => `<option${c === settings.currency ? " selected" : ""}>${c}</option>`).join("");
+  let h = `<div class="bsum">
+    <div class="stat"><div class="k">Annual budget</div>
+      <div class="annual"><input id="annual" inputmode="decimal" value="${plain(annual)}" placeholder="Set total" aria-label="Annual budget" ${canWrite ? "" : "disabled"}>
+      <select id="currency" aria-label="Currency" ${canWrite ? "" : "disabled"}>${curOpts}</select></div></div>
+    <div class="stat${annual && planned > annual ? " over" : ""}"><div class="k">Planned</div><div class="v">${money(planned)}</div><div class="s">${annual ? Math.round(planned / annual * 100) + "% of the annual budget" : "Sum of every planned line"}</div></div>
+    <div class="stat"><div class="k">Spent so far</div><div class="v">${money(spent)}</div><div class="s">${planned ? Math.round(spent / planned * 100) + "% of planned" : "Enter spend as invoices land"}</div></div>
+    <div class="stat${annual && free < 0 ? " over" : ""}"><div class="k">${annual && free < 0 ? "Over budget" : "Left to allocate"}</div><div class="v">${annual ? money(Math.abs(free)) : "—"}</div><div class="s">${annual ? "Annual budget minus planned" : "Set an annual budget to see this"}</div></div>
+  </div>`;
+  const scale = Math.max(annual, planned) || 1;
+  h += `<div class="alloc"><h3>Where the money goes <span>${planned ? money(planned) + " planned across " + layers.length + " layers" : "Nothing planned yet"}</span></h3><div class="stack" role="img" aria-label="Planned budget by layer">`;
+  layers.forEach((L, i) => { if (tots[i].plan) h += `<i class="c-${L.color}" style="width:${tots[i].plan / scale * 100}%" title="${esc(L.name)}: ${money(tots[i].plan)}"></i>`; });
+  if (annual > planned) h += `<i class="free" style="width:${(annual - planned) / scale * 100}%" title="Unallocated: ${money(annual - planned)}"></i>`;
+  h += `</div><div class="keys">`;
+  layers.forEach((L, i) => { h += `<div class="c-${L.color}"><b></b><span>${String(i + 1).padStart(2, "0")} · ${esc(L.name)}</span><em>${planned ? Math.round(tots[i].plan / planned * 100) : 0}%</em></div>`; });
+  h += `</div></div>`;
+  h += `<div class="btools"><p>Type a planned amount and what you've spent next to any line. Parents add up their sub-topics, and dropped topics don't count. You can type 15k or 1.2m.</p>${downloads ? '<button class="ghost" data-act="csv">Export CSV</button>' : ""}</div>`;
+  if (!layers.length) h += `<div class="empty"><h2>No layers yet</h2><p>Add layers and topics on the mind map, then come back to give each one a budget.</p></div>`;
+  layers.forEach((L, i) => {
+    const t = tots[i], pct = t.plan ? Math.min(100, t.actual / t.plan * 100) : 0;
+    h += `<section class="bl c-${L.color}"><header><h3><span class="num">${String(i + 1).padStart(2, "0")}</span>${esc(L.name)}</h3>
+      <div class="tot"><span>Planned <b>${money(t.plan)}</b></span><span>Spent <b>${money(t.actual)}</b></span></div>
+      <div class="meter${t.actual > t.plan ? " over" : ""}" title="Spent vs planned"><i style="width:${t.actual > t.plan ? 100 : pct}%"></i></div></header>
+      <div class="tw"><table><thead><tr><th>Item</th><th>Planned</th><th>Spent</th><th>Left</th></tr></thead><tbody>`;
+    for (const b of L.branches){
+      h += rows(L, b, 0, false);
+      if (canWrite) h += `<tr class="addrow"><td colspan="4"><button class="addbtn" data-act="add" data-lid="${L.id}" data-pid="${b.id}">+ Add line to ${esc(b.name)}</button></td></tr>`;
+    }
+    if (!L.branches.length) h += `<tr><td colspan="4" class="it" style="color:var(--faint)">No branches in this layer yet. Add them on the mind map.</td></tr>`;
+    h += `<tr class="foot"><td>Layer total</td><td>${money(t.plan)}</td><td>${money(t.actual)}</td><td>${money(t.plan - t.actual)}</td></tr>`;
+    h += `</tbody></table></div></section>`;
+  });
+  return h;
+}
+function rows(L, n, lvl, parentDropped){
+  const dropped = n.drop || parentDropped;
+  const r = rollup(n), hasKids = (n.children || []).length > 0;
+  const left = dropped ? 0 : r.plan - r.actual;
+  const dis = dropped || !canWrite ? "disabled" : "";
+  let h = `<tr class="l${Math.min(lvl, 3)}${dropped ? " drop" : ""}">
+    <td class="it" style="padding-left:${12 + lvl * 20}px">${ui.editing && ui.editing.id === n.id ? `<input class="rn" id="rn" value="${esc(n.name)}" maxlength="160" aria-label="Name">` : `<span class="o${n.origin === "board" ? " board" : ""}"></span><span class="t">${esc(n.name)}</span>`}</td>
+    <td class="n"><input id="p-${n.id}" data-lid="${L.id}" data-id="${n.id}" data-f="plan" inputmode="decimal" value="${plain(num(n.plan))}" placeholder="0" aria-label="Planned for ${esc(n.name)}" ${dis}>${hasKids && !dropped ? `<div class="rt">total ${money(r.plan)}</div>` : ""}</td>
+    <td class="n"><input id="a-${n.id}" data-lid="${L.id}" data-id="${n.id}" data-f="actual" inputmode="decimal" value="${plain(num(n.actual))}" placeholder="0" aria-label="Spent on ${esc(n.name)}" ${dis}>${hasKids && !dropped ? `<div class="rt">total ${money(r.actual)}</div>` : ""}</td>
+    <td class="left${left < 0 ? " neg" : ""}">${dropped ? "dropped" : (r.plan || r.actual ? money(left) : "")}</td></tr>`;
+  for (const c of n.children || []) h += rows(L, c, lvl + 1, dropped);
+  return h;
+}
+
+/* ---------- menu ---------- */
+function openMenu(anchor, spec){
+  ui.menu = spec;
+  const m = $("#menu");
+  m.innerHTML = menuHtml(spec);
+  m.className = "menu c-" + (layerById(spec.lid) || {}).color;
+  m.hidden = false;
+  const r = anchor.getBoundingClientRect(), mw = m.offsetWidth, mh = m.offsetHeight;
+  let left = Math.min(Math.max(8, r.left), innerWidth - mw - 8);
+  let top = r.bottom + 6;
+  if (top + mh > innerHeight - 8) top = Math.max(8, r.top - mh - 6);
+  m.style.left = left + "px"; m.style.top = top + "px";
+  const f = m.querySelector("button"); if (f) f.focus({ preventScroll: true });
+  ui.menuAnchor = anchor;
+}
+function closeMenu(){ if ($("#menu").hidden) return; $("#menu").hidden = true; ui.menu = null; if (remoteWaiting) { remoteWaiting = false; renderSoon(); } }
+function menuHtml(s){
+  const L = layerById(s.lid); if (!L) return "";
+  const mi = (act, label, extra = "") => `<button class="mi${extra}" data-mact="${act}">${label}</button>`;
+  if (s.id === "layer"){
+    if (s.confirm){
+      const n = L.branches.reduce((x, b) => x + 1 + countDesc(b), 0);
+      return `<div class="confirm"><p>Delete the layer <b>${esc(L.name)}</b> with its ${n} branches and topics, and their budget lines?</p><div class="row"><button class="del" data-mact="dellayer">Delete layer</button><button class="ghost" data-mact="close">Cancel</button></div></div>`;
+    }
+    const idx = layers.indexOf(L);
+    return `<div class="mt">${esc(L.name)}</div>${mi("rename", "Rename")}${mi("addbranch", "Add branch")}<hr>
+      <div class="mt">Colour</div><div class="sw">${PALETTE.map(c => `<button class="c-${c}" data-mact="color" data-c="${c}" aria-pressed="${c === L.color}" aria-label="${c}"></button>`).join("")}</div><hr>
+      ${idx > 0 ? mi("lup", "Move up") : ""}${idx < layers.length - 1 ? mi("ldown", "Move down") : ""}${mi("askdel", "Delete layer…", " danger")}`;
+  }
+  const f = find(L, s.id); if (!f) return "";
+  const n = f.node, isBranch = f.arr === L.branches;
+  if (s.confirm){
+    const k = countDesc(n);
+    return `<div class="confirm"><p>Delete <b>${esc(n.name)}</b>${k ? ` and its ${k} sub-topic${k === 1 ? "" : "s"}` : ""}? Its budget lines go too.</p><div class="row"><button class="del" data-mact="del">Delete</button><button class="ghost" data-mact="close">Cancel</button></div></div>`;
+  }
+  return `<div class="mt">${esc(n.name)}</div>${mi("rename", "Rename")}${mi("addchild", "Add a branch under this")}${mi("addsib", "Add a branch below this")}<hr>
+    ${mi("origin", n.origin === "board" ? "Mark as suggested" : "Mark as from whiteboard")}
+    ${mi("drop", n.drop ? "Restore (undo drop)" : "Drop from the plan")}<hr>
+    ${f.i > 0 ? mi("up", "Move up") : ""}${f.i < f.arr.length - 1 ? mi("down", "Move down") : ""}${mi("askdel", "Delete…", " danger")}`;
+}
+
+/* ---------- actions ---------- */
+function addNode(lid, pid){
+  const L = layerById(lid); if (!L) return;
+  let n;
+  if (!pid) { n = blank("New branch"); L.branches.push(n); }
+  else { const f = find(L, pid); if (!f) return; n = blank(L.branches.includes(f.node) ? "New topic" : "New branch"); (f.node.children = f.node.children || []).push(n); }
+  ui.collapsed.delete(lid); saveUI();
+  saveLayer(L);
+  ui.editing = { lid, id: n.id, fresh: true };
+  render();
+}
+function addLayer(){
+  const used = new Set(layers.map(l => l.color));
+  const color = PALETTE.find(c => !used.has(c)) || PALETTE[layers.length % PALETTE.length];
+  const L = { id: "L" + uid(), order: (layers.length ? Math.max(...layers.map(l => l.order)) : 0) + 1, name: "New layer", color, branches: [] };
+  layers.push(L); saveLayer(L);
+  ui.editing = { lid: L.id, id: "layer", fresh: true };
+  render();
+  const rn = document.getElementById("rn"); if (rn) rn.scrollIntoView({ block: "center" });
+}
+function commitRename(cancel){
+  const e = ui.editing; if (!e) return;
+  const rn = document.getElementById("rn"); const val = rn ? rn.value.trim() : "";
+  ui.editing = null;
+  const L = layerById(e.lid);
+  if (L && !cancel && val){
+    if (e.id === "layer") { if (L.name !== val) { L.name = val; saveLayer(L); } }
+    else { const f = find(L, e.id); if (f && f.node.name !== val) { f.node.name = val; saveLayer(L); } }
+  }
+  render();
+}
+function menuAction(act, btn){
+  const s = ui.menu; if (!s) return;
+  const L = layerById(s.lid); if (!L) return closeMenu();
+  const anchor = ui.menuAnchor;
+  if (act === "close") return closeMenu();
+  if (act === "askdel") { s.confirm = true; return openMenu(anchor, s); }
+  if (s.id === "layer"){
+    const idx = layers.indexOf(L);
+    if (act === "rename") { closeMenu(); ui.editing = { lid: L.id, id: "layer", fresh: true }; return render(); }
+    if (act === "addbranch") { closeMenu(); return addNode(L.id, null); }
+    if (act === "color") { L.color = btn.dataset.c; saveLayer(L); closeMenu(); return render(); }
+    if (act === "lup" || act === "ldown") {
+      const j = act === "lup" ? idx - 1 : idx + 1; const O = layers[j]; if (!O) return;
+      layers.forEach((l, k) => l.order = k + 1);
+      [L.order, O.order] = [O.order, L.order];
+      layers.sort((a, b) => a.order - b.order);
+      layers.forEach(l => saveLayer(l)); closeMenu(); return render();
+    }
+    if (act === "dellayer") {
+      layers = layers.filter(l => l !== L); closeMenu();
+      if (mode === "shared" && canWrite) { const path = "layers/" + L.id; pending[path] = { busy: false, dirty: false, del: true }; save(path); }
+      else writeLocal();
+      return render();
+    }
+    return;
+  }
+  const f = find(L, s.id); if (!f) return closeMenu();
+  const n = f.node;
+  if (act === "rename") { closeMenu(); ui.editing = { lid: L.id, id: n.id, fresh: true }; return render(); }
+  if (act === "addchild") { closeMenu(); return addNode(L.id, n.id); }
+  if (act === "addsib") {
+    closeMenu();
+    const nn = blank(isBranchArr(L, f.arr) ? "New branch" : "New topic");
+    f.arr.splice(f.i + 1, 0, nn); saveLayer(L);
+    ui.editing = { lid: L.id, id: nn.id, fresh: true }; return render();
+  }
+  if (act === "origin") n.origin = n.origin === "board" ? "suggested" : "board";
+  if (act === "drop") n.drop = !n.drop;
+  if (act === "up" && f.i > 0) [f.arr[f.i - 1], f.arr[f.i]] = [f.arr[f.i], f.arr[f.i - 1]];
+  if (act === "down" && f.i < f.arr.length - 1) [f.arr[f.i + 1], f.arr[f.i]] = [f.arr[f.i], f.arr[f.i + 1]];
+  if (act === "del") f.arr.splice(f.i, 1);
+  saveLayer(L); closeMenu(); render();
+}
+
+async function exportCsv(){
+  const cell = v => /[",\n]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v);
+  const out = [["Layer", "Branch", "Item", "Level", "Origin", "Status", "Planned (own)", "Spent (own)", "Planned (with sub-items)", "Spent (with sub-items)"]];
+  layers.forEach((L, i) => {
+    const ln = String(i + 1).padStart(2, "0") + " · " + L.name;
+    const walk = (n, branch, lvl, pd) => {
+      const r = rollup(n), d = n.drop || pd;
+      out.push([ln, branch, n.name, lvl === 0 ? "Branch" : lvl === 1 ? "Topic" : "Sub-topic", n.origin === "board" ? "Whiteboard" : "Suggested", d ? "Dropped" : "Keep", num(n.plan), num(n.actual), d ? 0 : r.plan, d ? 0 : r.actual]);
+      (n.children || []).forEach(c => walk(c, branch, lvl + 1, d));
+    };
+    L.branches.forEach(b => walk(b, b.name, 0, false));
+  });
+  out.push([]); out.push(["Annual budget", "", "", "", "", "", num(settings.annual), "", "", ""]); out.push(["Currency", settings.currency]);
+  saveFile("rasan-marketing-budget-" + stamp() + ".csv", "﻿" + out.map(r => r.map(cell).join(",")).join("\n"), "text/csv;charset=utf-8");
+}
+
+/* ---------- events ---------- */
+document.addEventListener("click", e => {
+  const m = $("#menu");
+  const mb = e.target.closest("[data-mact]");
+  if (mb && m.contains(mb)) { menuAction(mb.dataset.mact, mb); return; }
+  if (!m.hidden && !m.contains(e.target)) { const same = ui.menuAnchor && ui.menuAnchor.contains(e.target); closeMenu(); if (same) return; }
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const act = b.dataset.act;
+  if (act === "view") { ui.view = b.dataset.v; ui.editing = null; try { history.replaceState(null, "", "#" + ui.view); } catch (x) {} render(); scrollTo({ top: 0 }); return; }
+  if (act === "fold") { const id = b.dataset.lid; ui.collapsed.has(id) ? ui.collapsed.delete(id) : ui.collapsed.add(id); saveUI(); render(); return; }
+  if (act === "foldall") { const all = layers.every(L => ui.collapsed.has(L.id)); layers.forEach(L => all ? ui.collapsed.delete(L.id) : ui.collapsed.add(L.id)); saveUI(); render(); return; }
+  if (act === "csv") { exportCsv(); return; }
+  if (act === "backup") { saveFile("rasan-marketing-map-" + stamp() + ".json", JSON.stringify({ layers, settings }, null, 2), "application/json"); return; }
+  if (act === "restore") { $("#importfile").click(); return; }
+  if (!canWrite) return;
+  if (act === "node") { openMenu(b, { lid: b.dataset.lid, id: b.dataset.id }); return; }
+  if (act === "layer") { openMenu(b, { lid: b.dataset.lid, id: "layer" }); return; }
+  if (act === "add") { addNode(b.dataset.lid, b.dataset.pid || null); return; }
+  if (act === "addlayer") { addLayer(); return; }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.id === "rn") {
+    if (e.key === "Enter") { e.preventDefault(); commitRename(false); }
+    if (e.key === "Escape") { e.preventDefault(); commitRename(true); }
+    return;
+  }
+  if (e.key === "Escape" && !$("#menu").hidden) { const a = ui.menuAnchor; closeMenu(); if (a && document.contains(a)) a.focus(); }
+  if (e.key === "Enter" && e.target.matches("td.n input, #annual")) e.target.blur();
+});
+document.addEventListener("focusout", e => { if (e.target.id === "rn" && ui.editing) setTimeout(() => { if (ui.editing && document.activeElement?.id !== "rn") commitRename(false); }, 0); });
+document.addEventListener("focusin", e => { if (e.target.matches("td.n input, #annual")) setTimeout(() => { try { e.target.select(); } catch (x) {} }, 0); });
+document.addEventListener("change", e => {
+  const t = e.target;
+  if (t.id === "hide") { ui.hideDrop = t.checked; saveUI(); render(); return; }
+  if (t.id === "annual") { settings.annual = parseAmt(t.value); save("settings/plan"); renderSoon(); return; }
+  if (t.id === "currency") { settings.currency = t.value; save("settings/plan"); renderSoon(); return; }
+  if (t.matches("td.n input")) {
+    const L = layerById(t.dataset.lid); if (!L) return;
+    const f = find(L, t.dataset.id); if (!f) return;
+    const v = parseAmt(t.value);
+    if (num(f.node[t.dataset.f]) !== v) { f.node[t.dataset.f] = v; saveLayer(L); }
+    renderSoon();
+  }
+});
+$("#importfile").addEventListener("change", e => { const f = e.target.files[0]; if (f) importBackup(f); e.target.value = ""; });
+$("#q").addEventListener("input", e => { ui.q = e.target.value; renderSoon(); });
+addEventListener("scroll", () => { if (!$("#menu").hidden) closeMenu(); }, { passive: true });
+addEventListener("resize", () => { if (!$("#menu").hidden) closeMenu(); });
+
+const hdr = document.querySelector(".top");
+const setHH = () => document.documentElement.style.setProperty("--hh", hdr.offsetHeight + "px");
+setHH(); addEventListener("resize", setHH);
+const h = (location.hash || "").slice(1);
+if (h === "budget" || h === "map") ui.view = h;
+render();
+boot();
+})();
+</script>
+
+</body>
+</html>
